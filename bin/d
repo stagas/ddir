@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+
+var d = require('../')
+var colors = require('colors')
+var relative = require('path').relative
+var argv = require('../lib/argv')
+
+var path = './'
+var arg, args = process.argv.slice(2)
+
+var options = { sortDirection: 'asc' }
+
+argv('sort', 'listing sorting', function (sort) { options.sort = sort })
+argv('modified', 'sort by modified date', function () { options.sort = 'modified' })
+argv('size', 'sort by size', function () { options.sort = 'size' })
+argv('descending', 'sort descending', function () { options.sortDirection = 'des' })
+argv('ascending', 'sort ascending', function () { options.sortDirection = 'asc' })
+argv('help', 'usage:', function () { console.error(argv.help); process.exit() })
+
+var ok = false
+while (!ok) {
+  try {
+    var files = d.dir(argv())
+    var dirs = []
+    ok = true
+  } catch (e) {
+    console.error(e)
+    if ('ENOENT' == e.type) {
+      console.error('is ENOENT')
+    }
+    process.exit()
+  }
+}
+
+files = files.filter(function (file) {
+  var isdir = file.stat.isDirectory()
+  if (isdir) dirs.push(file)
+  return !isdir
+})
+
+function sortModified (a, b, c) {
+  if ('des' == options.sortDirection) c = a, a = b, b = c
+  return a.stat.mtime - b.stat.mtime
+}
+
+function sortSize (a, b, c) {
+  if ('des' == options.sortDirection) c = a, a = b, b = c
+  return a.stat.size - b.stat.size
+}
+
+if (options.sort) {
+  if ('size' == options.sort) {
+    files = files.sort(sortSize)
+  }
+  if ('modified' == options.sort) {
+    files = files.sort(sortModified)
+    dirs = dirs.sort(sortModified)
+  }
+}
+
+function getMaxPad (arr) {
+  var maxs = 0, maxn = 0
+  arr.forEach(function (file) {
+    maxs = Math.max(file.name.length, maxs)
+    maxn = Math.max(String(file.stat.size).length, maxn)
+  })
+  return { s: maxs, n: maxn }
+}
+
+var max = getMaxPad(dirs.concat(files))
+
+paint('white', dirs)
+paint('grey', files)
+
+function paint (color, files) {
+  files.forEach(function (file) {
+    var pad = Array(Math.max(0, max.s - file.name.length + max.n - (file.stat.size || 0).toString().length + 1)).join(' ')
+    console.log(
+        '%s'[color] + ' %s'.white
+      + ' %s'.blue
+      , file.name
+      , pad + (file.stat.size || (file.stat.isDirectory() ? ' ' : '0'))
+      , new Date(file.stat.mtime)
+          .toString()
+          .split(' ')
+          .slice(0, 5)
+          .join(' ')
+      )
+  })
+}
