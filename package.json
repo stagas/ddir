@@ -2,6 +2,7 @@
   "name": "ddir",
   "version": "0.0.1",
   "description": "minimal dir tool",
+  "keywords": ["dir","directory","ls"],
   "main": "index.js",
   "bin": "bin/d",
   "author": "stagas",
